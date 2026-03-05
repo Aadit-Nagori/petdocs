@@ -131,5 +131,3 @@ This is currently a solo project, but feedback and suggestions are welcome. Open
 MIT
 
 ---
-
-Built by [Aadit Nagori](https://github.com/Aadit-Nagori)
