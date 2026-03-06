@@ -1,0 +1,30 @@
+[project]
+name = "petdocs"
+version = "0.1.0"
+description = "Service to easily host and share documents"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "dj-database-url>=3.1.2",
+    "django>=5.2.10",
+    "django-storages[s3]>=1.14.6",
+    "dotenv>=0.9.9",
+    "psycopg2-binary>=2.9.11",
+    "ruff>=0.15.5",
+]
+
+[tool.ruff.lint]
+select = [
+    # pycodestyle
+    "E",
+    # Pyflakes
+    "F",
+    # pyupgrade
+    "UP",
+    # flake8-bugbear
+    "B",
+    # flake8-simplify
+    "SIM",
+    # isort
+    "I",
+]
