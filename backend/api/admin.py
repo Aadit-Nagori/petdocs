@@ -20,7 +20,7 @@ class SharelinkAdmin(admin.ModelAdmin):
     list_display = ["pet", "token", "created_at", "is_active", "display_expired"]
     readonly_fields = ["token", "created_at", "display_expired"]
     fieldsets = [
-        ("Main Info", {"fields": ["pet", "token", "created_at", "expires_at", "display_expired", "is_active"]}),
+        ("Main Info", {"fields": ["pet", "token", "created_at", "expires_at", "display_expired", "is_active"]}),  # noqa: E501
         ("Documents", {"fields": ["documents"]})
     ]
     

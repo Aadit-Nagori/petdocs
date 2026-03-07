@@ -28,3 +28,6 @@ select = [
     # isort
     "I",
 ]
+
+[tool.ruff]
+exclude = ["migrations", "tests.py"]
