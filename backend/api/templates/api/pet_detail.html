@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html>
+<head><title>{{ pet.name }}</title></head>
+<body>
+    <h2>{{ pet.name }}</h2>
+    <p>Type: {{ pet.get_pet_type_display }}</p>
+    <a href="{% url 'pets:pet_update' pet.pk %}">Edit</a>
+    <a href="{% url 'pets:pet_delete' pet.pk %}">Delete</a>
+    <a href="{% url 'pets:pet_list' %}">Back to My Pets</a>
+</body>
+</html>
