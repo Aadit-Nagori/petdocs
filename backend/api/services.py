@@ -16,7 +16,7 @@ def upload_document(pet: Pet, file: BinaryIO, name: str, file_type: str) -> Docu
         document = Document(pet=pet,name=name,file_type=file_type)
         document.file.save(file.name,file,save=False)
     except ConnectionError as exc:
-        raise RuntimeError('Failed to save file to Supabase') from exc
+        raise RuntimeError('Failed to save file to S3') from exc
     
     #try uploading to DB - if fails rollback S3 uploaded file
     try:
@@ -27,6 +27,19 @@ def upload_document(pet: Pet, file: BinaryIO, name: str, file_type: str) -> Docu
 
     return document
 
+def delete_document(pet: Pet, document: Document) -> bool:
+    #validate permissions
+    if document.pet != pet:
+        raise PermissionError("Document does not belong to this pet")
     
+    try:
+        document.file.delete(save=False)
+    except Exception as exc:
+        raise RuntimeError('Failed to delete document from S3') from exc
     
+    try:
+        document.delete()
+    except Exception as exc:
+        raise RuntimeError("Failed to delete document record from DB") from exc
     
+    return True

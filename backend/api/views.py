@@ -7,7 +7,7 @@ from django.views import generic
 
 from .forms import DocumentForm
 from .models import Document, Pet
-from .services import upload_document
+from .services import delete_document, upload_document
 
 
 @login_required
@@ -70,6 +70,16 @@ def document_add(request: HttpRequest, pk: int) -> HttpResponse:
     return render(request, 'api/document_form.html', {"form":form, "pet": pet})
 
 @login_required
-def document_delete(request: HttpRequest, doc_pk: int) -> HttpResponse:
-    pass
+def document_delete(request: HttpRequest, pk:int, doc_pk: int) -> HttpResponse:
+    pet = get_object_or_404(Pet, pk=pk, owner=request.user)
+    document = get_object_or_404(Document,pk=doc_pk, pet=pet)
+    if request.method == 'POST':
+        try:
+            delete_document(
+                pet=pet,
+                document=document
+            )
+        except Exception as e:
+            print(f"file delete failed with exception {e}")
+    return redirect('pets:pet_detail',pk=pk)
     
