@@ -5,7 +5,24 @@
     <h2>{{ pet.name }}</h2>
     <p>Type: {{ pet.get_pet_type_display }}</p>
     <a href="{% url 'pets:pet_update' pet.pk %}">Edit</a>
-    <a href="{% url 'pets:pet_delete' pet.pk %}">Delete</a>
+    <a href="{% url 'pets:pet_delete' pet.pk %}">Delete Pet</a>
     <a href="{% url 'pets:pet_list' %}">Back to My Pets</a>
+
+    <h3>Documents</h3>
+    <a href="{% url 'pets:document_add' pet.pk %}">Add Document</a>
+    <ul>
+        {% for doc in documents %}
+            <li>
+                {{ doc.name }} ({{ doc.get_file_type_display }})
+                <a href="{{ doc.file.url }}">Download</a>
+                <form method="post" action="{% url 'pets:document_delete' pet.pk doc.pk %}" style="display:inline">
+                    {% csrf_token %}
+                    <button type="submit">Delete</button>
+                </form>
+            </li>
+        {% empty %}
+            <li>No documents yet.</li>
+        {% endfor %}
+    </ul>
 </body>
 </html>

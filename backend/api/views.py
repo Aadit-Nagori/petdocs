@@ -1,11 +1,13 @@
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import HttpRequest, HttpResponse
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.views import generic
 
-from .models import Pet
+from .forms import DocumentForm
+from .models import Document, Pet
+from .services import upload_document
 
 
 @login_required
@@ -16,7 +18,8 @@ def pet_list(request: HttpRequest) -> HttpResponse:
 @login_required
 def pet_detail(request: HttpRequest, pk: int) -> HttpResponse:
     pet = get_object_or_404(Pet, pk=pk, owner=request.user)
-    return render(request, "api/pet_detail.html", {"pet": pet})
+    documents = Document.objects.filter(pet=pet)
+    return render(request, "api/pet_detail.html", {"pet": pet, "documents": documents})
 
 
 class PetCreate(LoginRequiredMixin, generic.CreateView):
@@ -45,4 +48,28 @@ class PetDelete(LoginRequiredMixin, generic.DeleteView):
     
     def get_queryset(self):
         return Pet.objects.filter(owner=self.request.user)
-        
+
+@login_required
+def document_add(request: HttpRequest, pk: int) -> HttpResponse:
+    pet = get_object_or_404(Pet, pk=pk, owner=request.user)
+    if request.method == 'POST':
+        form = DocumentForm(request.POST, request.FILES)
+        if form.is_valid():
+            try:
+                upload_document(
+                    pet=pet,
+                    file=form.cleaned_data['file'],
+                    name=form.cleaned_data['name'],
+                    file_type=form.cleaned_data['file_type']
+                )
+                return redirect('pets:pet_detail', pk=pk)
+            except Exception as e:
+                print(f"file upload failed with exception {e}")
+    else:
+        form = DocumentForm()
+    return render(request, 'api/document_form.html', {"form":form, "pet": pet})
+
+@login_required
+def document_delete(request: HttpRequest, doc_pk: int) -> HttpResponse:
+    pass
+    
