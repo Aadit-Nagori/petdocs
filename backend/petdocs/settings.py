@@ -88,12 +88,13 @@ DATABASES = {
 
 STORAGES = {
     "default": {
-        "BACKEND": "storages.backends.s3.S3Storage",
+        "BACKEND": "api.storage.SupabasePublicStorage",
         "OPTIONS": {
             "bucket_name": os.getenv('SUPABASE_BUCKET_NAME'),
             "endpoint_url": os.getenv('SUPABASE_ENDPOINT_URL'),
             "access_key": os.getenv('SUPABASE_ACCESS_KEY_ID'),
-            "secret_key": os.getenv('SUPABASE_SECRET_ACCESS_KEY')
+            "secret_key": os.getenv('SUPABASE_SECRET_ACCESS_KEY'),
+            "querystring_auth": False,
         },
     },
     "staticfiles": {
