@@ -10,6 +10,7 @@ dependencies = [
     "django-storages[s3]>=1.14.6",
     "dotenv>=0.9.9",
     "psycopg2-binary>=2.9.11",
+    "qrcode[pil]>=8.2",
     "ruff>=0.15.5",
 ]
 
