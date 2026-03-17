@@ -1,13 +1,23 @@
+from datetime import timedelta
+
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.http import HttpRequest, HttpResponse
+from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse_lazy
+from django.urls import reverse, reverse_lazy
+from django.utils import timezone
 from django.views import generic
 
-from .forms import DocumentForm
-from .models import Document, Pet
-from .services import delete_document, upload_document
+from .forms import DocumentForm, SharelinkForm
+from .models import Document, Pet, Sharelink
+from .services import (
+    create_sharelink,
+    deactivate_sharelink,
+    delete_document,
+    generate_qrcode,
+    upload_document,
+    validate_sharelink,
+)
 
 
 @login_required
@@ -19,7 +29,9 @@ def pet_list(request: HttpRequest) -> HttpResponse:
 def pet_detail(request: HttpRequest, pk: int) -> HttpResponse:
     pet = get_object_or_404(Pet, pk=pk, owner=request.user)
     documents = Document.objects.filter(pet=pet)
-    return render(request, "api/pet_detail.html", {"pet": pet, "documents": documents})
+    sharelinks = Sharelink.objects.filter(pet=pet)
+    return render(request, "api/pet_detail.html", {"pet": pet, "documents": documents, 
+                                                   "sharelinks": sharelinks})
 
 
 class PetCreate(LoginRequiredMixin, generic.CreateView):
@@ -82,4 +94,81 @@ def document_delete(request: HttpRequest, pk:int, doc_pk: int) -> HttpResponse:
         except Exception as e:
             print(f"file delete failed with exception {e}")
     return redirect('pets:pet_detail',pk=pk)
-    
+
+@login_required
+def sharelink_create(request: HttpRequest, pk: int) -> HttpResponse:
+    pet = get_object_or_404(Pet, pk=pk, owner=request.user)
+    if request.method == 'POST':
+        form = SharelinkForm(pet, request.POST)
+        if form.is_valid():
+            try:
+                sharelink = create_sharelink(
+                    pet=pet,
+                    document_ids=list(form.cleaned_data['documents']
+                                      .values_list('pk', flat=True)),
+                    expires_at=form.cleaned_data['expires_at']
+                )
+                url = request.build_absolute_uri(reverse('sharelink_view', 
+                                                 args=[sharelink.token]))
+                qr_code = generate_qrcode(url)
+                return render(request, 'api/sharelink_created.html', 
+                                {'sharelink': sharelink, 
+                                'url': url, 
+                                'qr_code': qr_code, 
+                                'pet': pet})
+            except Exception as e:
+                print(f"sharelink create failed with exception {e}")
+    else:
+        form = SharelinkForm(pet)
+    return render(request,'api/sharelink_form.html', {"form":form, "pet": pet})
+
+@login_required
+def sharelink_quickshare(request: HttpRequest, pk: int) -> HttpResponse:
+    pet = get_object_or_404(Pet,pk=pk,owner=request.user)
+    if request.method == 'POST':
+        documents = Document.objects.filter(pet=pet)
+        document_ids = list(documents.values_list('pk',flat=True))
+        try:
+            sharelink = create_sharelink(
+                pet=pet,
+                document_ids=document_ids,
+                expires_at=timezone.now()+timedelta(days=7)
+            )
+            url = request.build_absolute_uri(reverse('sharelink_view', 
+                                                 args=[sharelink.token]))
+            qr_code = generate_qrcode(url)
+            return render(request, 'api/sharelink_created.html', 
+                            {'sharelink': sharelink, 
+                            'url': url, 
+                            'qr_code': qr_code, 
+                            'pet': pet})
+        except Exception as e:
+            print(f"quick share creation failed with {e}")
+    else:
+        return redirect('pets:pet_detail',pk=pk)
+
+@login_required
+def sharelink_deactivate(request: HttpRequest, pk: int, token: str) -> HttpResponse:
+    pet = get_object_or_404(Pet, pk=pk, owner=request.user)
+    sharelink = get_object_or_404(Sharelink,token=token,pet=pet)
+    if request.method == 'POST':
+        try:
+            deactivate_sharelink(
+                pet=pet,
+                sharelink=sharelink
+            )
+        except Exception as e:
+            print(f"sharelink deactivation failed with exception {e}")
+    return redirect('pets:pet_detail',pk=pk)
+
+def sharelink_view(request: HttpRequest, token: str) -> HttpResponse:
+    try:
+        sharelink = validate_sharelink(token)
+    except (ValueError, PermissionError) as exc:
+        raise Http404 from exc
+    documents = sharelink.documents.all()
+    return render(request, 'api/sharelink_view.html', {
+        'sharelink': sharelink,
+        'pet': sharelink.pet,
+        'documents': documents
+    })

@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head><title>{{ pet.name }}'s Documents</title></head>
+<body>
+    <h2>{{ pet.name }}'s Documents</h2>
+    <p>Type: {{ pet.get_pet_type_display }}</p>
+    <p>Link expires: {{ sharelink.expires_at }}</p>
+
+    <ul>
+        {% for doc in documents %}
+            <li>
+                {{ doc.name }} ({{ doc.get_file_type_display }})
+                <a href="{{ doc.file.url }}">Download</a>
+            </li>
+        {% empty %}
+            <li>No documents shared.</li>
+        {% endfor %}
+    </ul>
+</body>
+</html>

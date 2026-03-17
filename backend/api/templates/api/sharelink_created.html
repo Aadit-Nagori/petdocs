@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head><title>Share Link Created - {{ pet.name }}</title></head>
+<body>
+    <h2>Share Link Created for {{ pet.name }}</h2>
+    <p>Expires: {{ sharelink.expires_at }}</p>
+
+    <p>Share this link:</p>
+    <a href="{{ url }}">{{ url }}</a>
+
+    <p>Or scan the QR code:</p>
+    <img src="data:image/png;base64,{{ qr_code }}" alt="QR Code">
+
+    <br>
+    <a href="{% url 'pets:pet_detail' pet.pk %}">Back to {{ pet.name }}</a>
+</body>
+</html>

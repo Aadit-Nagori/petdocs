@@ -17,9 +17,11 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import include, path
+from api import views as api_views
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("accounts/", include("accounts.urls")),
-    path("pets/", include("api.urls"))
+    path("pets/", include("api.urls")),
+    path("share/<str:token>/", api_views.sharelink_view, name="sharelink_view")
 ]
