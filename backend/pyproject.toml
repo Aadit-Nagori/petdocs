@@ -31,4 +31,4 @@ select = [
 ]
 
 [tool.ruff]
-exclude = ["migrations", "tests.py", ".venv", "urls.py"]
+exclude = ["migrations", ".venv", "urls.py"]

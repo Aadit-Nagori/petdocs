@@ -11,6 +11,8 @@ from django.views import generic
 from .forms import DocumentForm, SharelinkForm
 from .models import Document, Pet, Sharelink
 from .services import (
+    SharelinkExpiredError,
+    SharelinkInactiveError,
     create_sharelink,
     deactivate_sharelink,
     delete_document,
@@ -164,7 +166,11 @@ def sharelink_deactivate(request: HttpRequest, pk: int, token: str) -> HttpRespo
 def sharelink_view(request: HttpRequest, token: str) -> HttpResponse:
     try:
         sharelink = validate_sharelink(token)
-    except (ValueError, PermissionError) as exc:
+    except SharelinkExpiredError:
+        return render(request, 'api/sharelink_expired.html')
+    except SharelinkInactiveError:
+        return render(request, 'api/sharelink_inactive.html')
+    except ValueError as exc:
         raise Http404 from exc
     documents = sharelink.documents.all()
     return render(request, 'api/sharelink_view.html', {

@@ -9,6 +9,14 @@ from django.utils import timezone
 from .models import Document, Pet, Sharelink
 
 MIME_TYPES = ["image/jpeg", "image/png", "application/pdf"]
+
+
+class SharelinkExpiredError(Exception):
+    pass
+
+
+class SharelinkInactiveError(Exception):
+    pass
 def upload_document(pet: Pet, file: BinaryIO, name: str, file_type: str) -> Document:
     
     #validate file
@@ -72,8 +80,10 @@ def validate_sharelink(token: str) -> Sharelink:
         sharelink = Sharelink.objects.get(token=token)
     except Sharelink.DoesNotExist as exc:
         raise ValueError("Sharelink does not exist") from exc
-    if not sharelink.is_active or sharelink.is_expired:
-        raise PermissionError("sharelink expired")
+    if sharelink.is_expired:
+        raise SharelinkExpiredError("Sharelink has expired")
+    if not sharelink.is_active:
+        raise SharelinkInactiveError("Sharelink has been deactivated")
     return sharelink
 
 def deactivate_sharelink(pet: Pet, sharelink: Sharelink) -> bool:
