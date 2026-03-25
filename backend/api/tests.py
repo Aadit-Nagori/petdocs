@@ -60,9 +60,45 @@ class TestUploadDocument(TestCase):
         with patch.object(FieldFile, 'delete') as mock_delete:
             with patch.object(Document, 'save', side_effect=Exception("DB error")):
                 with self.assertRaises(RuntimeError):
-                    upload_document(pet=self.pet, file=file, name="test", file_type="vr")
+                    upload_document(pet=self.pet, file=file, name="test", file_type="o")
             mock_delete.assert_called_once_with(save=False)
     
+class TestCreateSharelink(TestCase):
+    def setUp(self):
+        self.user = Account.objects.create_user(username="testuser", password="pass")
+        self.pet = Pet.objects.create(owner=self.user, name="testpet", pet_type="dog")
+        self.doc1 = Document.objects.create(pet=self.pet, name="doc1", file_type="vr")
+        self.doc2 = Document.objects.create(pet=self.pet, name="doc2", file_type="vr")
+        self.document_ids = [self.doc1.pk, self.doc2.pk]
+    
+    def test_incorrect_document_number(self):
+        invalid_ids = [self.document_ids[0],99999]
+        with self.assertRaises(ValueError):
+            create_sharelink(pet=self.pet,
+                             document_ids=invalid_ids,
+                             expires_at=timezone.now()+timedelta(days=7))
+    
+    def test_invalid_expiry_date(self):
+        with self.assertRaises(ValueError):
+            create_sharelink(pet=self.pet,
+                             document_ids=self.document_ids,
+                             expires_at=timezone.now()-timedelta(days=1))
+    
+    def test_sharelink_creation(self):
+        sharelink = create_sharelink(pet=self.pet,
+                                     document_ids=self.document_ids,
+                                     expires_at=timezone.now()+timedelta(days=7))
+        self.assertTrue(Sharelink.objects.filter(token=sharelink.token).exists())
+        self.assertEqual(set(sharelink.documents.values_list('pk', flat=True)), 
+                         set(self.document_ids))
+    
+    def test_documents_from_diff_pet_rejected(self):
+        other_pet = Pet.objects.create(owner=self.user, name="otherpet", pet_type="cat")
+        other_doc = Document.objects.create(pet=other_pet, name="other", file_type="o")
+        with self.assertRaises(ValueError):
+            create_sharelink(pet=self.pet,
+                             document_ids=[other_doc.pk],
+                             expires_at=timezone.now()+timedelta(days=7))
     
         
         
