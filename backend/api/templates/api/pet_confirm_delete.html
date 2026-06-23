@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html>
+<head><title>Delete {{ object.name }}</title></head>
+<body>
+    <h2>Delete {{ object.name }}?</h2>
+    <p>This will permanently delete {{ object.name }} and all their documents.</p>
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit">Confirm Delete</button>
+    </form>
+    <a href="{% url 'pets:pet_detail' object.pk %}">Cancel</a>
+</body>
+</html>

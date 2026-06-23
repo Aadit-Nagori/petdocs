@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head><title>My Pets</title></head>
+<body>
+    <h2>My Pets</h2>
+    <a href="{% url 'pets:pet_create' %}">Add Pet</a>
+    <form method="post" action="{% url 'logout' %}">
+        {% csrf_token %}
+        <button type="submit">Logout</button>
+    </form>
+    <ul>
+        {% for pet in pets %}
+            <li>
+                <a href="{% url 'pets:pet_detail' pet.pk %}">{{ pet.name }} ({{ pet.get_pet_type_display }})</a>
+                <a href="{% url 'pets:pet_update' pet.pk %}">Edit</a>
+                <a href="{% url 'pets:pet_delete' pet.pk %}">Delete</a>
+            </li>
+        {% empty %}
+            <li>No pets yet.</li>
+        {% endfor %}
+    </ul>
+</body>
+</html>

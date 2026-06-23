@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head><title>{{ pet.name }}</title></head>
+<body>
+    <h2>{{ pet.name }}</h2>
+    <p>Type: {{ pet.get_pet_type_display }}</p>
+    <a href="{% url 'pets:pet_update' pet.pk %}">Edit</a>
+    <a href="{% url 'pets:pet_delete' pet.pk %}">Delete Pet</a>
+    <a href="{% url 'pets:pet_list' %}">Back to My Pets</a>
+
+    <h3>Documents</h3>
+    <a href="{% url 'pets:document_add' pet.pk %}">Add Document</a>
+    <ul>
+        {% for doc in documents %}
+            <li>
+                {{ doc.name }} ({{ doc.get_file_type_display }})
+                <a href="{{ doc.file.url }}">Download</a>
+                <form method="post" action="{% url 'pets:document_delete' pet.pk doc.pk %}" style="display:inline">
+                    {% csrf_token %}
+                    <button type="submit">Delete</button>
+                </form>
+            </li>
+        {% empty %}
+            <li>No documents yet.</li>
+        {% endfor %}
+    </ul>
+
+    <h3>Sharelinks</h3>
+    <a href="{% url 'pets:sharelink_create' pet.pk %}">Create Sharelink</a>
+    <form method="post" action="{% url 'pets:sharelink_quickshare' pet.pk %}">
+        {% csrf_token %}
+        <button type="submit">Quick Share (all docs, 7 days)</button>
+    </form>
+
+    <ul>
+        {% for link in sharelinks %}
+            <li>
+                Expires: {{ link.expires_at }}
+                {% if link.is_active and not link.is_expired %}(Active){% else %}(Inactive){% endif %}
+                <form method="post" action="{% url 'pets:sharelink_deactivate' pet.pk link.token %}" style="display:inline">
+                    {% csrf_token %}
+                    <button type="submit">Deactivate</button>
+                </form>
+            </li>
+        {% empty %}
+            <li>No sharelinks yet.</li>
+        {% endfor %}
+    </ul>
+
+</body>
+</html>

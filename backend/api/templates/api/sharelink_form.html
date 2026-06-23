@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html>
+<head><title>Create Share Link - {{ pet.name }}</title></head>
+<body>
+    <h2>Create Share Link for {{ pet.name }}</h2>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Create Link</button>
+    </form>
+    <a href="{% url 'pets:pet_detail' pet.pk %}">Cancel</a>
+</body>
+</html>

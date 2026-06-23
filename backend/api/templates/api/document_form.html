@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html>
+<head><title>Add Document - {{ pet.name }}</title></head>
+<body>
+    <h2>Add Document for {{ pet.name }}</h2>
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Upload</button>
+    </form>
+    <a href="{% url 'pets:pet_detail' pet.pk %}">Cancel</a>
+</body>
+</html>
