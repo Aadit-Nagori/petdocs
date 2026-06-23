@@ -4,6 +4,7 @@ from io import BytesIO
 from typing import BinaryIO
 
 import qrcode
+from django.core.exceptions import ValidationError
 from django.utils import timezone
 
 from .models import Document, Pet, Sharelink
@@ -14,9 +15,9 @@ MIME_TYPES = ["image/jpeg", "image/png", "application/pdf"]
 class SharelinkExpiredError(Exception):
     pass
 
-
 class SharelinkInactiveError(Exception):
     pass
+
 def upload_document(pet: Pet, file: BinaryIO, name: str, file_type: str) -> Document:
     
     #validate file
@@ -78,7 +79,7 @@ def generate_qrcode(url: str) -> str:
 def validate_sharelink(token: str) -> Sharelink:
     try:
         sharelink = Sharelink.objects.get(token=token)
-    except Sharelink.DoesNotExist as exc:
+    except (Sharelink.DoesNotExist, ValidationError) as exc:
         raise ValueError("Sharelink does not exist") from exc
     if sharelink.is_expired:
         raise SharelinkExpiredError("Sharelink has expired")

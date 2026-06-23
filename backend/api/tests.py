@@ -1,3 +1,4 @@
+import uuid
 from datetime import timedelta
 from unittest.mock import patch
 
@@ -13,6 +14,7 @@ from .services import (
     SharelinkExpiredError,
     SharelinkInactiveError,
     create_sharelink,
+    deactivate_sharelink,
     upload_document,
     validate_sharelink,
 )
@@ -99,7 +101,147 @@ class TestCreateSharelink(TestCase):
             create_sharelink(pet=self.pet,
                              document_ids=[other_doc.pk],
                              expires_at=timezone.now()+timedelta(days=7))
+
+class TestValidateSharelink(TestCase):
+    def setUp(self):
+        self.user = Account.objects.create_user(username="testuser", password="pass")
+        self.pet = Pet.objects.create(owner=self.user, name="testpet", pet_type="dog")
+        self.doc = Document.objects.create(pet=self.pet, name="doc1", file_type="vr")
+        self.sharelink = Sharelink.objects.create(
+            pet=self.pet,
+            expires_at=timezone.now() + timedelta(days=7)
+        )
+        self.sharelink.documents.set([self.doc])
+
+    def test_valid_sharelink_token(self):
+        sharelink = validate_sharelink(token=self.sharelink.token)
+        self.assertTrue(Sharelink.objects.filter(token=sharelink.token).exists())
+        self.assertEqual(set(sharelink.documents.values_list('pk', flat=True)), 
+                         set(self.sharelink.documents.values_list('pk',flat=True)))
     
+    def test_nonexistent_sharelink(self):
+        with self.assertRaises(ValueError):
+            validate_sharelink(token=uuid.uuid4())
+    
+    def test_expired_sharelink(self):
+        self.sharelink.expires_at = timezone.now()-timedelta(seconds=100)
+        self.sharelink.save()
+        with self.assertRaises(SharelinkExpiredError):
+            validate_sharelink(token=self.sharelink.token)
+    
+    def test_deactivate_sharelink_other_pet(self):
+        other_pet = Pet.objects.create(owner=self.user, name="otherpet", pet_type="cat")
+        with self.assertRaises(PermissionError):
+            deactivate_sharelink(pet=other_pet,sharelink=self.sharelink)
+    
+    def test_deactivate_sharelink(self):
+        deactivate_sharelink(pet=self.pet,sharelink=self.sharelink)
+        self.assertFalse(self.sharelink.is_active)
+    
+    def test_deactivated_sharelink(self):
+        deactivate_sharelink(pet=self.pet,sharelink=self.sharelink)
+        with self.assertRaises(SharelinkInactiveError):
+            validate_sharelink(token=self.sharelink.token)
+
+
+class TestAuthentication(TestCase):
+    def setUp(self):
+        self.user = Account.objects.create_user(username="testuser", password="pass")
+        self.pet = Pet.objects.create(owner=self.user, name="testpet", pet_type="dog")
+        self.doc = Document.objects.create(pet=self.pet, name="doc1", file_type="vr")
+
+    def test_unauthenticated_pet_list_redirects(self):
+        response = self.client.get('/pets/')
+        self.assertRedirects(response, '/accounts/login/?next=/pets/')
+
+    def test_unauthenticated_pet_detail_redirects(self):
+        response = self.client.get(f'/pets/{self.pet.pk}/')
+        self.assertRedirects(response, f'/accounts/login/?next=/pets/{self.pet.pk}/')
+
+    def test_unauthenticated_document_add_redirects(self):
+        response = self.client.get(f'/pets/{self.pet.pk}/documents/add/')
+        self.assertRedirects(
+            response, f'/accounts/login/?next=/pets/{self.pet.pk}/documents/add/'
+        )
+
+    def test_unauthenticated_sharelink_create_redirects(self):
+        response = self.client.get(f'/pets/{self.pet.pk}/sharelink/create/')
+        self.assertRedirects(
+            response, f'/accounts/login/?next=/pets/{self.pet.pk}/sharelink/create/'
+        )
+
+
+class TestOwnership(TestCase):
+    def setUp(self):
+        self.user_a = Account.objects.create_user(username="usera", password="pass")
+        self.user_b = Account.objects.create_user(username="userb", password="pass")
+        self.pet_a = Pet.objects.create(owner=self.user_a, name="peta", pet_type="dog")
+        self.doc_a = Document.objects.create(
+            pet=self.pet_a, name="doc1", file_type="vr"
+        )
+
+    def test_user_b_cannot_view_user_a_pet(self):
+        self.client.force_login(self.user_b)
+        response = self.client.get(f'/pets/{self.pet_a.pk}/')
+        self.assertEqual(response.status_code, 404)
+
+    def test_user_b_cannot_add_document_to_user_a_pet(self):
+        self.client.force_login(self.user_b)
+        response = self.client.get(f'/pets/{self.pet_a.pk}/documents/add/')
+        self.assertEqual(response.status_code, 404)
+
+    def test_user_b_cannot_delete_user_a_document(self):
+        self.client.force_login(self.user_b)
+        response = self.client.post(
+            f'/pets/{self.pet_a.pk}/documents/{self.doc_a.pk}/delete/'
+        )
+        self.assertEqual(response.status_code, 404)
+
+    def test_user_b_cannot_create_sharelink_for_user_a_pet(self):
+        self.client.force_login(self.user_b)
+        response = self.client.get(f'/pets/{self.pet_a.pk}/sharelink/create/')
+        self.assertEqual(response.status_code, 404)
+
+
+# TestPublicSharelinkView — write this following the pattern above
+# setUp needs: user, pet, doc, and a Sharelink with a token
+# Tests needed:
+#   - valid token returns 200 without authentication
+#   - invalid token returns 404
+#   - expired token renders sharelink_expired.html
+#   - inactive token renders sharelink_inactive.html
+
+class TestPublicSharelinkView(TestCase):
+    def setUp(self):
+        self.user = Account.objects.create_user(username="user", password="pass")
+        self.pet = Pet.objects.create(owner=self.user, name="pet", pet_type="dog")
+        self.doc = Document.objects.create(
+            pet=self.pet, name="doc1", file_type="vr", file="documents/1/1/test.jpg"
+        )
+        self.sharelink = Sharelink.objects.create(pet=self.pet,
+            expires_at=timezone.now() + timedelta(days=7))
+        self.sharelink.documents.set([self.doc])
         
-        
+
+    def test_valid_token_view(self):
+        response = self.client.get(f'/share/{self.sharelink.token}/')
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'api/sharelink_view.html')
+    
+    def test_invalid_token_view(self):
+        response = self.client.get(f'/share/{uuid.uuid4()}/')
+        self.assertEqual(response.status_code, 404)
+    
+    def test_inactive_token_view(self):
+        deactivate_sharelink(self.pet,self.sharelink)
+        response = self.client.get(f'/share/{self.sharelink.token}/')
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'api/sharelink_inactive.html')
+    
+    def test_expired_token_view(self):
+        self.sharelink.expires_at = timezone.now() - timedelta(seconds=100)
+        self.sharelink.save()
+        response = self.client.get(f'/share/{self.sharelink.token}/')
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'api/sharelink_expired.html')
         
